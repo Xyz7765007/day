@@ -1,9 +1,33 @@
 const sharp = require('sharp');
 
+// satori is ESM-only, use dynamic import
+let satoriModule = null;
+async function getSatori() {
+  if (!satoriModule) satoriModule = (await import('satori')).default;
+  return satoriModule;
+}
+
 const BLOB_FILE = 'vox-tracker.json';
 const TARGET_DATE = new Date('2026-11-30T23:59:59');
 const START_DATE = new Date('2026-03-29');
 const TARGET_REV = 8000000;
+
+// Cache font in memory across invocations
+let fontCache = null;
+async function getFont() {
+  if (fontCache) return fontCache;
+  const res = await fetch('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff');
+  fontCache = await res.arrayBuffer();
+  return fontCache;
+}
+
+let fontBoldCache = null;
+async function getFontBold() {
+  if (fontBoldCache) return fontBoldCache;
+  const res = await fetch('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff');
+  fontBoldCache = await res.arrayBuffer();
+  return fontBoldCache;
+}
 
 async function getData(token) {
   if (!token) return null;
@@ -28,30 +52,30 @@ function getPhase(d) {
 
 function getSched(dow) {
   if (dow === 0) return [
-    ['10:00', 'Light planning + inbox zero', '#888'],
-    ['11:00', 'Smaeccan advisory', '#ffaa00'],
-    ['12:00', 'Relationship texting', '#ff6b6b'],
-    ['14:00', 'Rest / dogs / recharge', '#444'],
-    ['18:00', 'Prep Monday - 3 priorities', '#00ff88'],
+    { t: '10:00', l: 'Light planning + inbox', c: '#888' },
+    { t: '11:00', l: 'Smaeccan advisory', c: '#ffaa00' },
+    { t: '12:00', l: 'Relationship texting', c: '#ff6b6b' },
+    { t: '14:00', l: 'Rest / dogs / recharge', c: '#444' },
+    { t: '18:00', l: 'Prep Monday', c: '#00ff88' },
   ];
   if (dow === 6) return [
-    ['09:00', 'Weekly metrics review', '#ffaa00'],
-    ['10:00', 'Plan next week outreach', '#00ff88'],
-    ['12:00', 'Case study + website', '#c084fc'],
-    ['14:00', 'Pipeline cleanup', '#5BA0D6'],
-    ['16:00', 'Content batch - LinkedIn', '#c084fc'],
-    ['18:00', 'Free evening', '#444'],
+    { t: '09:00', l: 'Weekly metrics review', c: '#ffaa00' },
+    { t: '10:00', l: 'Plan next week', c: '#00ff88' },
+    { t: '12:00', l: 'Case study + website', c: '#c084fc' },
+    { t: '14:00', l: 'Pipeline cleanup', c: '#5BA0D6' },
+    { t: '16:00', l: 'Content batch', c: '#c084fc' },
+    { t: '18:00', l: 'Free evening', c: '#444' },
   ];
   return [
-    ['07:00', 'Pipeline review', '#888'],
-    ['08:00', 'LinkedIn - 20 connects', '#5BA0D6'],
-    ['09:00', 'Cold email sequences', '#00ff88'],
-    ['10:00', 'Side Kick deliverables', '#ffaa00'],
-    ['13:00', 'Keto lunch + break', '#444'],
-    ['14:00', 'Voxelised build + deliver', '#00ff88'],
-    ['16:00', 'Follow-ups / calls', '#ff6b6b'],
-    ['17:00', 'Case study / Loom', '#c084fc'],
-    ['19:00', 'Evening review', '#888'],
+    { t: '07:00', l: 'Pipeline review', c: '#888' },
+    { t: '08:00', l: 'LinkedIn outreach', c: '#5BA0D6' },
+    { t: '09:00', l: 'Cold email sequences', c: '#00ff88' },
+    { t: '10:00', l: 'Side Kick work', c: '#ffaa00' },
+    { t: '13:00', l: 'Keto lunch + break', c: '#444' },
+    { t: '14:00', l: 'Voxelised build', c: '#00ff88' },
+    { t: '16:00', l: 'Follow-ups / calls', c: '#ff6b6b' },
+    { t: '17:00', l: 'Case study / Loom', c: '#c084fc' },
+    { t: '19:00', l: 'Evening review', c: '#888' },
   ];
 }
 
@@ -63,7 +87,7 @@ const QUOTES = [
   "Build free. Get paid. Repeat.",
   "Show up. Ship. Follow up.",
   "Outreach today. Invoice tomorrow.",
-  "No one is coming to save you. Go.",
+  "No one is coming to save you.",
   "80 lakhs. 8 months. No shortcuts.",
   "You are one pitch away.",
   "The grind IS the shortcut.",
@@ -71,17 +95,21 @@ const QUOTES = [
 ];
 
 function fmtINR(n) {
-  if (n >= 1e7) return (n / 1e7).toFixed(1) + 'Cr';
-  if (n >= 1e5) return (n / 1e5).toFixed(1) + 'L';
-  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
-  return String(n);
+  if (n >= 1e7) return 'Rs.' + (n / 1e7).toFixed(1) + 'Cr';
+  if (n >= 1e5) return 'Rs.' + (n / 1e5).toFixed(1) + 'L';
+  if (n >= 1e3) return 'Rs.' + (n / 1e3).toFixed(0) + 'K';
+  return 'Rs.' + n;
 }
 
-function e(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&apos;'); }
+// Helper to build satori elements (React-like objects)
+function h(type, props, ...children) {
+  const flatChildren = children.flat().filter(c => c != null && c !== false);
+  return { type, props: { ...props, children: flatChildren.length === 1 ? flatChildren[0] : flatChildren.length > 0 ? flatChildren : undefined } };
+}
 
 module.exports = async function handler(req, res) {
   const w = parseInt(req.query.width || req.query.w) || 1170;
-  const h = parseInt(req.query.height || req.query.h) || 2532;
+  const hh = parseInt(req.query.height || req.query.h) || 2532;
 
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   let st = { rev: 0, clients: 0, pipeline: 0, leads: 89, msg: '' };
@@ -103,98 +131,117 @@ module.exports = async function handler(req, res) {
   const quote = msg || QUOTES[dSince % QUOTES.length];
   const wk = Math.floor(dSince / 7) + 1;
 
-  // All sizes scaled to width. Base design at 1170.
-  const s = (n) => Math.round(n * w / 1170);
+  const [font, fontBold] = await Promise.all([getFont(), getFontBold()]);
 
-  const topPad = s(420); // Below clock area
-  const lx = s(80);     // Left margin
-  const rx = w - s(80);  // Right edge
+  // Build the layout using satori h() elements
+  const element = h('div', {
+    style: {
+      display: 'flex', flexDirection: 'column', width: '100%', height: '100%',
+      background: '#000', color: '#fff', fontFamily: 'Inter',
+      padding: '420px 72px 160px',
+    }
+  },
+    // Days left + date row
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' } },
+      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: '12px' } },
+        h('span', { style: { fontSize: '140px', fontWeight: 700, color: '#00ff88', lineHeight: 1 } }, String(dLeft)),
+        h('span', { style: { fontSize: '32px', color: '#666', letterSpacing: '4px' } }, 'DAYS LEFT'),
+      ),
+      h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
+        h('span', { style: { fontSize: '22px', color: '#555', letterSpacing: '3px' } }, `WEEK ${wk}`),
+        h('span', { style: { fontSize: '28px', color: '#888' } }, `${dn[dow]}  ${mn[now.getMonth()]} ${now.getDate()}`),
+      ),
+    ),
 
-  // Build schedule lines
-  const schedSVG = sched.map((item, i) => {
-    const y = topPad + s(520) + i * s(70);
-    return `
-      <text x="${lx}" y="${y}" fill="#555" font-family="'Courier New',monospace" font-size="${s(24)}" font-weight="500">${item[0]}</text>
-      <circle cx="${lx + s(130)}" cy="${y - s(7)}" r="${s(6)}" fill="${item[2]}"/>
-      <text x="${lx + s(155)}" y="${y}" fill="#ccc" font-family="sans-serif" font-size="${s(26)}">${e(item[1])}</text>`;
-  }).join('');
+    // Time progress bar
+    h('div', { style: { display: 'flex', height: '6px', background: '#1a1a1a', borderRadius: '3px', marginBottom: '36px', overflow: 'hidden', width: '100%' } },
+      h('div', { style: { display: 'flex', width: `${pctT}%`, height: '100%', background: '#444', borderRadius: '3px' } }),
+    ),
 
-  const revBarW = rx - lx;
-  const revFill = Math.max(s(4), Math.round(revBarW * pctR / 100));
-  const timeBarFill = Math.round(revBarW * pctT / 100);
+    // Revenue label
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' } },
+      h('span', { style: { fontSize: '24px', color: '#666', letterSpacing: '4px' } }, 'REVENUE'),
+      h('span', { style: { fontSize: '24px', color: '#666' } }, `${fmtINR(rev)} / Rs.80L`),
+    ),
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <rect width="${w}" height="${h}" fill="#000"/>
+    // Revenue bar
+    h('div', { style: { display: 'flex', height: '36px', background: '#111', borderRadius: '18px', marginBottom: '10px', overflow: 'hidden', width: '100%' } },
+      h('div', { style: { display: 'flex', width: `${Math.max(pctR, 2)}%`, height: '100%', background: pctR > 0 ? '#00ff88' : '#111', borderRadius: '18px', alignItems: 'center', justifyContent: 'center' } },
+        pctR >= 8 ? h('span', { style: { fontSize: '18px', fontWeight: 700, color: '#000' } }, `${pctR}%`) : null,
+      ),
+    ),
 
-  <!-- DAYS LEFT -->
-  <text x="${lx}" y="${topPad}" fill="#00ff88" font-family="sans-serif" font-size="${s(120)}" font-weight="800">${dLeft}</text>
-  <text x="${lx + s(120) * String(dLeft).length * 0.55}" y="${topPad}" fill="#666" font-family="sans-serif" font-size="${s(30)}" letter-spacing="${s(4)}"> DAYS LEFT</text>
+    // Sub info
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '32px' } },
+      h('span', { style: { fontSize: '22px', color: '#444' } }, `${clients} clients  |  ${leads} leads`),
+      pipeline > 0 ? h('span', { style: { fontSize: '22px', color: '#ffaa00' } }, `${fmtINR(pipeline)} pipeline`) : null,
+    ),
 
-  <!-- WEEK + DATE -->
-  <text x="${rx}" y="${topPad - s(35)}" fill="#555" font-family="sans-serif" font-size="${s(22)}" text-anchor="end" letter-spacing="${s(3)}">WEEK ${wk}</text>
-  <text x="${rx}" y="${topPad}" fill="#888" font-family="sans-serif" font-size="${s(28)}" text-anchor="end">${dn[dow]}  ${mn[now.getMonth()]} ${now.getDate()}</text>
+    // Phase box
+    h('div', { style: { display: 'flex', flexDirection: 'column', background: '#0a0a0a', borderRadius: '16px', padding: '20px 28px', marginBottom: '36px', border: '1px solid #1a1a1a' } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' } },
+        h('span', { style: { fontSize: '20px', color: '#00ff88', letterSpacing: '5px' } }, `PHASE ${phase.n}`),
+        h('span', { style: { fontSize: '28px', fontWeight: 700, color: '#fff' } }, phase.name),
+      ),
+      h('span', { style: { fontSize: '22px', color: '#666' } }, phase.f),
+    ),
 
-  <!-- TIME BAR -->
-  <rect x="${lx}" y="${topPad + s(30)}" width="${revBarW}" height="${s(6)}" rx="${s(3)}" fill="#1a1a1a"/>
-  <rect x="${lx}" y="${topPad + s(30)}" width="${timeBarFill}" height="${s(6)}" rx="${s(3)}" fill="#444"/>
+    // TODAY label
+    h('span', { style: { fontSize: '20px', color: '#444', letterSpacing: '5px', marginBottom: '18px' } }, 'TODAY'),
 
-  <!-- REVENUE LABEL -->
-  <text x="${lx}" y="${topPad + s(100)}" fill="#666" font-family="sans-serif" font-size="${s(22)}" letter-spacing="${s(3)}">REVENUE</text>
-  <text x="${rx}" y="${topPad + s(100)}" fill="#666" font-family="sans-serif" font-size="${s(22)}" text-anchor="end">${e('₹' + fmtINR(rev))} / ₹80L</text>
+    // Schedule items
+    h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, gap: '4px' } },
+      ...sched.map(item =>
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: '14px', padding: '8px 0' } },
+          h('span', { style: { fontSize: '24px', color: '#555', minWidth: '100px', fontFamily: 'Inter' } }, item.t),
+          h('div', { style: { display: 'flex', width: '10px', height: '10px', borderRadius: '5px', background: item.c } }),
+          h('span', { style: { fontSize: '26px', color: '#ccc' } }, item.l),
+        )
+      ),
+    ),
 
-  <!-- REVENUE BAR -->
-  <rect x="${lx}" y="${topPad + s(120)}" width="${revBarW}" height="${s(32)}" rx="${s(16)}" fill="#111"/>
-  <rect x="${lx}" y="${topPad + s(120)}" width="${revFill}" height="${s(32)}" rx="${s(16)}" fill="${pctR > 0 ? '#00ff88' : '#111'}"/>
-  ${pctR >= 8 ? `<text x="${lx + revFill / 2}" y="${topPad + s(142)}" fill="#000" font-family="sans-serif" font-size="${s(18)}" font-weight="700" text-anchor="middle">${pctR}%</text>` : ''}
+    // Bottom divider
+    h('div', { style: { display: 'flex', height: '1px', background: '#1a1a1a', marginTop: '20px', marginBottom: '20px', width: '100%' } }),
 
-  <!-- SUB INFO -->
-  <text x="${lx}" y="${topPad + s(180)}" fill="#444" font-family="sans-serif" font-size="${s(20)}">${clients} clients · ${leads} leads</text>
-  ${pipeline > 0 ? `<text x="${rx}" y="${topPad + s(180)}" fill="#ffaa00" font-family="sans-serif" font-size="${s(20)}" text-anchor="end">${e('₹' + fmtINR(pipeline))} pipeline</text>` : ''}
+    // Stats row
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '24px' } },
+      h('div', { style: { display: 'flex', flexDirection: 'column' } },
+        h('span', { style: { fontSize: '40px', fontWeight: 700, color: '#fff' } }, fmtINR(Math.round(TARGET_REV / tDays * dSince))),
+        h('span', { style: { fontSize: '16px', color: '#555', letterSpacing: '3px' } }, 'TARGET PACE'),
+      ),
+      h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
+        h('span', { style: { fontSize: '40px', fontWeight: 700, color: rev > 0 ? '#00ff88' : '#444' } }, fmtINR(rev)),
+        h('span', { style: { fontSize: '16px', color: '#555', letterSpacing: '3px' } }, 'EARNED'),
+      ),
+      h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
+        h('span', { style: { fontSize: '40px', fontWeight: 700, color: '#ffaa00' } }, fmtINR(Math.max(0, TARGET_REV - rev))),
+        h('span', { style: { fontSize: '16px', color: '#555', letterSpacing: '3px' } }, 'TO GO'),
+      ),
+    ),
 
-  <!-- PHASE BOX -->
-  <rect x="${lx}" y="${topPad + s(220)}" width="${revBarW}" height="${s(100)}" rx="${s(14)}" fill="#0a0a0a" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="${lx + s(24)}" y="${topPad + s(262)}" fill="#00ff88" font-family="sans-serif" font-size="${s(18)}" letter-spacing="${s(4)}">PHASE ${phase.n}</text>
-  <text x="${lx + s(170)}" y="${topPad + s(262)}" fill="#fff" font-family="sans-serif" font-size="${s(26)}" font-weight="700">${e(phase.name)}</text>
-  <text x="${lx + s(24)}" y="${topPad + s(298)}" fill="#666" font-family="sans-serif" font-size="${s(20)}">${e(phase.f)}</text>
-
-  <!-- TODAY LABEL -->
-  <text x="${lx}" y="${topPad + s(390)}" fill="#444" font-family="sans-serif" font-size="${s(18)}" letter-spacing="${s(4)}">TODAY</text>
-
-  <!-- SCHEDULE -->
-  ${sched.map((item, i) => {
-    const y = topPad + s(440) + i * s(64);
-    return `<text x="${lx}" y="${y}" fill="#555" font-family="'Courier New',monospace" font-size="${s(22)}">${item[0]}</text>
-    <circle cx="${lx + s(120)}" cy="${y - s(6)}" r="${s(6)}" fill="${item[2]}"/>
-    <text x="${lx + s(145)}" y="${y}" fill="#ccc" font-family="sans-serif" font-size="${s(24)}">${e(item[1])}</text>`;
-  }).join('\n  ')}
-
-  <!-- BOTTOM LINE -->
-  <line x1="${lx}" y1="${h - s(340)}" x2="${rx}" y2="${h - s(340)}" stroke="#1a1a1a" stroke-width="1"/>
-
-  <!-- STATS ROW -->
-  <text x="${lx}" y="${h - s(280)}" fill="#fff" font-family="sans-serif" font-size="${s(36)}" font-weight="700">${e('₹' + fmtINR(Math.round(TARGET_REV / tDays * dSince)))}</text>
-  <text x="${lx}" y="${h - s(246)}" fill="#555" font-family="sans-serif" font-size="${s(16)}" letter-spacing="${s(2)}">TARGET PACE</text>
-
-  <text x="${w / 2}" y="${h - s(280)}" fill="${rev > 0 ? '#00ff88' : '#444'}" font-family="sans-serif" font-size="${s(36)}" font-weight="700" text-anchor="middle">${e('₹' + fmtINR(rev))}</text>
-  <text x="${w / 2}" y="${h - s(246)}" fill="#555" font-family="sans-serif" font-size="${s(16)}" text-anchor="middle" letter-spacing="${s(2)}">EARNED</text>
-
-  <text x="${rx}" y="${h - s(280)}" fill="#ffaa00" font-family="sans-serif" font-size="${s(36)}" font-weight="700" text-anchor="end">${e('₹' + fmtINR(Math.max(0, TARGET_REV - rev)))}</text>
-  <text x="${rx}" y="${h - s(246)}" fill="#555" font-family="sans-serif" font-size="${s(16)}" text-anchor="end" letter-spacing="${s(2)}">TO GO</text>
-
-  <!-- QUOTE -->
-  <text x="${w / 2}" y="${h - s(180)}" fill="#444" font-family="sans-serif" font-size="${s(22)}" font-style="italic" text-anchor="middle">${e(quote)}</text>
-
-</svg>`;
+    // Quote
+    h('div', { style: { display: 'flex', justifyContent: 'center' } },
+      h('span', { style: { fontSize: '22px', color: '#444', fontStyle: 'italic', textAlign: 'center' } }, quote),
+    ),
+  );
 
   try {
+    const satori = await getSatori();
+    const svg = await satori(element, {
+      width: w,
+      height: hh,
+      fonts: [
+        { name: 'Inter', data: font, weight: 400, style: 'normal' },
+        { name: 'Inter', data: fontBold, weight: 700, style: 'normal' },
+      ],
+    });
+
     const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
+
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.status(200).send(pngBuffer);
   } catch (err) {
-    // Fallback: return SVG if sharp fails
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.setHeader('Cache-Control', 'no-cache, no-store');
-    res.status(200).send(svg);
+    res.status(500).json({ error: err.message, stack: err.stack?.slice(0, 500) });
   }
 };

@@ -3,273 +3,285 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Voxelised War Tracker</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><text x='4' y='24' font-size='20' fill='%2300ff88'>⚡</text></svg>"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><text x='4' y='24' font-size='20' fill='%2300ff88'>V</text></svg>"/>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#000;--bg1:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--fg:#fff;--fg2:#888;--fg3:#555;--fg4:#333;--ac:#00ff88;--acd:#003311;--warn:#ffaa00;--err:#ff4444;--font:'Bricolage Grotesque',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
-html{font-size:14px}body{background:var(--bg);color:var(--fg);font-family:var(--font);min-height:100vh}
-input,textarea,select,button{font-family:inherit}::selection{background:var(--ac);color:var(--bg)}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
-.lbl{font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--fg3);font-weight:500;margin-bottom:.3rem}
-.inp{width:100%;padding:.6rem .7rem;background:var(--bg1);border:1px solid var(--bg3);border-radius:5px;color:#ccc;font-size:.85rem;outline:none}
-.inp:focus{border-color:var(--fg3)}
-.card{background:var(--bg1);border:1px solid var(--bg3);border-radius:10px;padding:1rem}
+body{background:#000;color:#fff;font-family:'Bricolage Grotesque',system-ui,sans-serif;min-height:100vh}
+input,textarea,select,button{font-family:inherit}
+::selection{background:#00ff88;color:#000}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#000}::-webkit-scrollbar-thumb{background:#1a1a1a;border-radius:3px}
+.lbl{font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:#555;font-weight:500;margin-bottom:.3rem}
+.inp{width:100%;padding:.6rem .7rem;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:5px;color:#ccc;font-size:.85rem;outline:none}
+.inp:focus{border-color:#555}
+.card{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:1rem;margin-bottom:1rem}
+.saved{color:#00ff88;font-size:.65rem;letter-spacing:.1em;opacity:0;transition:opacity .3s}
+.saved.show{opacity:1}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const{useState,useEffect,useCallback}=React;
+const{useState,useEffect,useRef,useCallback}=React;
 
+const API=window.location.origin+'/api/data';
 const TARGET_DATE=new Date('2026-11-30T23:59:59');
 const START_DATE=new Date('2026-03-29T00:00:00');
 const TARGET_REV=8000000;
+const STREAMS=['Side Kick (salary)','Voxelised (agency)','Smaeccan (advisory)','Parvani (paused)','D2C Platform (dev)','Polymarket (paused)'];
+const fmtINR=n=>{if(n>=1e7)return'\u20B9'+(n/1e7).toFixed(1)+'Cr';if(n>=1e5)return'\u20B9'+(n/1e5).toFixed(1)+'L';if(n>=1e3)return'\u20B9'+(n/1e3).toFixed(0)+'K';return'\u20B9'+n};
 
 function getPhase(d){
-  if(d<14)return{n:'01',name:'FOUNDATION',w:'Wk 1-2',f:'Entity setup, email warming, warm outreach, case study #1',tasks:['Confront CA — fix entity registration','File GST application','Set up Skydo + Razorpay','Create 3 email senders, add to SmartLead','Start warming emails (14 days)','Send 30 warm LinkedIn/email messages','Create case study PDF #1','Record Loom video #1','Create ClickUp pipeline board','Update Voxelised website with 3 offers + Calendly']};
+  if(d<14)return{n:'01',name:'FOUNDATION',w:'Wk 1-2',f:'Entity setup, email warming, warm outreach, case study #1',tasks:['Confront CA \u2014 fix entity registration','File GST application','Set up Skydo + Razorpay','Create 3 email senders in SmartLead','Start warming emails (14 days)','Send 30 warm LinkedIn/email messages','Create case study PDF #1','Record Loom video #1','Create ClickUp pipeline board','Update Voxelised website with 3 offers + Calendly']};
   if(d<28)return{n:'02',name:'OUTBOUND LAUNCH',w:'Wk 3-4',f:'Cold sequences live, LinkedIn campaigns, discovery calls',tasks:['Launch India email sequence (63 leads)','Launch Gulf LinkedIn-first sequence (26 leads)','Launch ANZ email+LinkedIn+Loom sequence','Book 5-10 discovery calls','Send 50 follow-ups on warm leads','Create case study PDF #2','Post 3 LinkedIn content pieces','Refine ICP based on response data']};
-  if(d<56)return{n:'03',name:'PIPELINE BUILD',w:'Wk 5-8',f:'Full outbound, proposals, close first deals',tasks:['Send 200+ outbound per week','Book 10-15 discovery calls/week','Send 5+ proposals','Close first audit deal (₹75K-$3K)','Close first retainer (₹2-3.5L/mo)','Build & deliver first "Build Free" project','Expand to ANZ/SEA leads','Create 3rd case study from live client']};
-  if(d<120)return{n:'04',name:'REVENUE',w:'Mo 3-4',f:'Deliver, expand, retainer upsells',tasks:['Maintain 200+ outbound/week','Close 2-3 retainer clients','Upsell existing clients','Deliver exceptional results for case studies','Launch referral ask campaign','Build second Loom demo for ANZ','Start raising retainer rates','Target: ₹4-6L/month revenue']};
-  return{n:'05',name:'SCALE',w:'Mo 5-8',f:'Referral flywheel, raise rates, build team',tasks:['Referral-driven pipeline (50%+ of leads)','Raise rates 20-30%','Consider hiring first VA','Target: ₹8-12L/month revenue','Build productized service offering','Launch inbound content engine','Close 2-3 project deals ($10K-$25K)','Hit ₹80L cumulative']}
-}
+  if(d<56)return{n:'03',name:'PIPELINE BUILD',w:'Wk 5-8',f:'Full outbound, proposals, close first deals',tasks:['Send 200+ outbound per week','Book 10-15 discovery calls/week','Send 5+ proposals','Close first audit deal','Close first retainer','Build & deliver first Build Free project','Expand to ANZ/SEA leads','Create 3rd case study from live client']};
+  if(d<120)return{n:'04',name:'REVENUE',w:'Mo 3-4',f:'Deliver, expand, retainer upsells',tasks:['Maintain 200+ outbound/week','Close 2-3 retainer clients','Upsell existing clients','Deliver exceptional results','Launch referral ask campaign','Build second Loom demo for ANZ','Start raising retainer rates','Target: 4-6L/month revenue']};
+  return{n:'05',name:'SCALE',w:'Mo 5-8',f:'Referral flywheel, raise rates, build team',tasks:['Referral-driven pipeline (50%+ of leads)','Raise rates 20-30%','Consider hiring first VA','Target: 8-12L/month revenue','Build productized service offering','Launch inbound content engine','Close 2-3 project deals ($10-25K)','Hit 80L cumulative']}}
 
 function getSchedule(dow){
   const W=[
     {t:'07:00',l:'Pipeline review + responses',c:'#888',d:'Check email replies, LinkedIn messages, ClickUp pipeline'},
-    {t:'08:00',l:'LinkedIn outreach — 20 connects',c:'#5BA0D6',d:'Send connection requests + personalized notes. Gulf: LinkedIn first, then email 2-3 days later'},
-    {t:'09:00',l:'Cold email sequences — review & adjust',c:'#00ff88',d:'Check SmartLead metrics, adjust subject lines, rotate sequences'},
-    {t:'10:00',l:'Side Kick — client deliverables',c:'#ffaa00',d:'Material, Veloka, Sprinto, Tazapay, Nutriventia, Protecto work'},
+    {t:'08:00',l:'LinkedIn outreach \u2014 20 connects',c:'#5BA0D6',d:'Send connection requests + personalized notes. Gulf: LinkedIn first, then email 2-3 days later'},
+    {t:'09:00',l:'Cold email sequences \u2014 review & adjust',c:'#00ff88',d:'Check SmartLead metrics, adjust subject lines, rotate sequences'},
+    {t:'10:00',l:'Side Kick \u2014 client deliverables',c:'#ffaa00',d:'Material, Veloka, Sprinto, Tazapay, Nutriventia, Protecto'},
     {t:'13:00',l:'Keto lunch + break',c:'#444',d:'High fat, moderate protein, low carb. Walk the dogs.'},
-    {t:'14:00',l:'Voxelised — build & deliver',c:'#00ff88',d:'Active client work, automation builds, audit deliverables'},
-    {t:'16:00',l:'Follow-ups · proposals · calls',c:'#ff6b6b',d:'Discovery calls, send proposals, follow up on outstanding quotes'},
+    {t:'14:00',l:'Voxelised \u2014 build & deliver',c:'#00ff88',d:'Active client work, automation builds, audit deliverables'},
+    {t:'16:00',l:'Follow-ups \u00b7 proposals \u00b7 calls',c:'#ff6b6b',d:'Discovery calls, send proposals, follow up on outstanding quotes'},
     {t:'17:00',l:'Case study / Loom / content',c:'#c084fc',d:'Write case study, record Loom walkthrough, draft LinkedIn post'},
-    {t:'19:00',l:'Evening review — plan tomorrow',c:'#888',d:'Update tracker, set 3 priorities for tomorrow, update ClickUp'}
+    {t:'19:00',l:'Evening review \u2014 plan tomorrow',c:'#888',d:'Update tracker, set 3 priorities for tomorrow, update ClickUp'}
   ];
   const SA=[
-    {t:'09:00',l:'Weekly metrics review',c:'#ffaa00',d:'Email open/reply rates, LinkedIn accept rates, pipeline value, revenue'},
+    {t:'09:00',l:'Weekly metrics review',c:'#ffaa00',d:'Email open/reply rates, LinkedIn accept rates, pipeline value'},
     {t:'10:00',l:'Plan next week outreach',c:'#00ff88',d:'Queue new leads, write new sequences, prep Looms'},
-    {t:'12:00',l:'Case study / website updates',c:'#c084fc',d:'Polish case studies, update Voxelised site, add testimonials'},
-    {t:'14:00',l:'Voxelised pipeline cleanup',c:'#5BA0D6',d:'Update CRM, move stale leads, add new prospects'},
-    {t:'16:00',l:'Content batch — LinkedIn posts',c:'#c084fc',d:'Write 3-5 LinkedIn posts for the week, schedule them'},
+    {t:'12:00',l:'Case study + website updates',c:'#c084fc',d:'Polish case studies, update Voxelised site'},
+    {t:'14:00',l:'Pipeline cleanup',c:'#5BA0D6',d:'Update CRM, move stale leads, add new prospects'},
+    {t:'16:00',l:'Content batch \u2014 LinkedIn posts',c:'#c084fc',d:'Write 3-5 LinkedIn posts for the week'},
     {t:'18:00',l:'Free evening',c:'#444',d:'Rest, socialize, recharge'}
   ];
   const SU=[
     {t:'10:00',l:'Light planning + inbox zero',c:'#888',d:'Clear inbox, quick scan of pipeline'},
-    {t:'11:00',l:'Smæccan advisory — 1 hour',c:'#ffaa00',d:'Weekly check-in, strategic input only'},
+    {t:'11:00',l:'Smaeccan advisory \u2014 1 hour',c:'#ffaa00',d:'Weekly check-in, strategic input only'},
     {t:'12:00',l:'Relationship texting window',c:'#ff6b6b',d:'Catch up with friends, family, network'},
-    {t:'14:00',l:'Rest · dogs · recharge',c:'#444',d:'Walk the pug and maltipoo, gym, relax'},
-    {t:'18:00',l:'Prep Monday — set 3 priorities',c:'#00ff88',d:'What are the 3 things that move the needle tomorrow?'}
+    {t:'14:00',l:'Rest \u00b7 dogs \u00b7 recharge',c:'#444',d:'Walk the pug and maltipoo, gym, relax'},
+    {t:'18:00',l:'Prep Monday \u2014 set 3 priorities',c:'#00ff88',d:'What are the 3 things that move the needle tomorrow?'}
   ];
-  if(dow===0)return{blocks:SU,label:'SUNDAY — REST & PREP'};
-  if(dow===6)return{blocks:SA,label:'SATURDAY — REVIEW & BATCH'};
-  return{blocks:W,label:['','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'][dow]+' — OUTREACH & BUILD'}
-}
-
-const STREAMS=['Side Kick (salary)','Voxelised (agency)','Smæccan (advisory)','Parvani (paused)','D2C Platform (dev)','Polymarket (paused)'];
-const fmtINR=n=>{if(n>=1e7)return`₹${(n/1e7).toFixed(1)}Cr`;if(n>=1e5)return`₹${(n/1e5).toFixed(1)}L`;if(n>=1e3)return`₹${(n/1e3).toFixed(0)}K`;return`₹${n}`};
+  if(dow===0)return{blocks:SU,label:'SUNDAY \u2014 REST & PREP'};
+  if(dow===6)return{blocks:SA,label:'SATURDAY \u2014 REVIEW & BATCH'};
+  return{blocks:W,label:['','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'][dow]+' \u2014 OUTREACH & BUILD'}}
 
 function App(){
-  const defaults={rev:0,clients:0,pipeline:0,leads:89,msg:'',streams:[0,0,0,0,0,0],log:[]};
-  const[state,setState]=useState(()=>{try{return{...defaults,...JSON.parse(localStorage.getItem('vwt_state'))}}catch(e){return defaults}});
-  const save=s=>{setState(s);localStorage.setItem('vwt_state',JSON.stringify(s))};
-  const upd=(k,v)=>save({...state,[k]:v});
-  const updStream=(i,v)=>{const s=[...state.streams];s[i]=parseInt(v)||0;const total=s.reduce((a,b)=>a+b,0);save({...state,streams:s,rev:total})};
-  const addLog=(note)=>{const entry={date:new Date().toISOString().split('T')[0],note,rev:state.rev};save({...state,log:[entry,...state.log].slice(0,50)})};
+  const DEFAULTS={rev:0,clients:0,pipeline:0,leads:89,msg:'',streams:[0,0,0,0,0,0],log:[],checkedTasks:[]};
+  const[state,setState]=useState(DEFAULTS);
+  const[loading,setLoading]=useState(true);
+  const[saveStatus,setSaveStatus]=useState('');
+  const saveTimer=useRef(null);
+
+  // Load from server on mount
+  useEffect(()=>{
+    fetch(API).then(r=>r.json()).then(data=>{
+      setState(s=>({...DEFAULTS,...data}));setLoading(false);
+    }).catch(e=>{console.error('Load error:',e);setLoading(false)})
+  },[]);
+
+  // Save to server (debounced)
+  const saveToServer=useCallback((newState)=>{
+    setState(newState);
+    // Also save to localStorage as backup
+    try{localStorage.setItem('vwt_backup',JSON.stringify(newState))}catch(e){}
+    // Debounce server save
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(()=>{
+      setSaveStatus('saving...');
+      fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newState)})
+        .then(r=>r.json()).then(()=>{setSaveStatus('saved');setTimeout(()=>setSaveStatus(''),2000)})
+        .catch(e=>{setSaveStatus('error: '+e.message);console.error(e)})
+    },500);
+  },[]);
+
+  const upd=(k,v)=>saveToServer({...state,[k]:v});
+  const updStream=(i,v)=>{const s=[...state.streams];s[i]=parseInt(v)||0;const total=s.reduce((a,b)=>a+b,0);saveToServer({...state,streams:s,rev:total})};
+  const toggleTask=(id)=>{const ct=[...(state.checkedTasks||[])];const idx=ct.indexOf(id);if(idx>=0)ct.splice(idx,1);else ct.push(id);saveToServer({...state,checkedTasks:ct})};
+  const addLog=(note)=>{const entry={date:new Date().toISOString().split('T')[0],note,rev:state.rev};saveToServer({...state,log:[entry,...(state.log||[])].slice(0,100)})};
 
   const now=new Date();
-  const daysSinceStart=Math.max(0,Math.floor((now-START_DATE)/864e5));
+  const daysSince=Math.max(0,Math.floor((now-START_DATE)/864e5));
   const daysLeft=Math.max(0,Math.floor((TARGET_DATE-now)/864e5));
   const totalDays=Math.floor((TARGET_DATE-START_DATE)/864e5);
-  const pctTime=Math.round(daysSinceStart/totalDays*100);
+  const pctTime=Math.round(daysSince/totalDays*100);
   const pctRev=Math.min(100,Math.round(state.rev/TARGET_REV*100));
-  const phase=getPhase(daysSinceStart);
+  const phase=getPhase(daysSince);
   const sched=getSchedule(now.getDay());
-  const weekNum=Math.floor(daysSinceStart/7)+1;
+  const weekNum=Math.floor(daysSince/7)+1;
   const monthlyTarget=Math.round((TARGET_REV-state.rev)/Math.max(1,Math.ceil(daysLeft/30)));
+  const wpUrl=`${window.location.origin}/api/wallpaper?width=1170&height=2532`;
 
-  const base=typeof window!=='undefined'?window.location.origin:'';
-  const wpUrl=`${base}/api/wallpaper?rev=${state.rev}&clients=${state.clients}&pipeline=${state.pipeline}&leads=${state.leads}&width=1170&height=2532${state.msg?'&msg='+encodeURIComponent(state.msg):''}`;
   const[copied,setCopied]=useState(false);
-  const copy=()=>{navigator.clipboard.writeText(wpUrl);setCopied(true);setTimeout(()=>setCopied(false),2000)};
   const[logInput,setLogInput]=useState('');
+
+  if(loading)return(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{textAlign:'center'}}><div style={{fontSize:'1.5rem',fontWeight:700,marginBottom:8}}>Loading...</div><div style={{fontSize:'.8rem',color:'#555'}}>Fetching tracker data</div></div></div>);
 
   return(
   <div style={{maxWidth:520,margin:'0 auto',padding:'1rem',paddingBottom:'4rem'}}>
     {/* HEADER */}
-    <div style={{marginBottom:'1.5rem',paddingTop:'.5rem'}}>
-      <div style={{fontSize:'.65rem',letterSpacing:'.3em',color:'var(--fg4)',marginBottom:4}}>VOXELISED</div>
-      <h1 style={{fontSize:'1.8rem',fontWeight:800,lineHeight:1,margin:'0 0 .3rem'}}>War Tracker</h1>
-      <div style={{fontSize:'.8rem',color:'var(--fg3)'}}>₹80L by November 2026 — Week {weekNum}</div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.5rem',paddingTop:'.5rem'}}>
+      <div>
+        <div style={{fontSize:'.65rem',letterSpacing:'.3em',color:'#333',marginBottom:4}}>VOXELISED</div>
+        <h1 style={{fontSize:'1.8rem',fontWeight:800,lineHeight:1,margin:'0 0 .3rem'}}>War Tracker</h1>
+        <div style={{fontSize:'.8rem',color:'#555'}}>{'\u20B9'}80L by Nov 2026 \u2014 Week {weekNum}</div>
+      </div>
+      <div style={{textAlign:'right'}}>
+        <span className={`saved ${saveStatus?'show':''}`}>{saveStatus==='saved'?'\u2713 SAVED':saveStatus==='saving...'?'SAVING...':saveStatus}</span>
+      </div>
     </div>
 
     {/* DAYS + TIME */}
-    <div className="card" style={{marginBottom:'1rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-      <div>
-        <div style={{fontSize:'2.5rem',fontWeight:800,color:'var(--ac)',lineHeight:1}}>{daysLeft}</div>
-        <div style={{fontSize:'.65rem',letterSpacing:'.15em',color:'var(--fg3)',marginTop:2}}>DAYS LEFT</div>
-      </div>
-      <div style={{textAlign:'center'}}>
-        <div style={{fontSize:'1.5rem',fontWeight:700,color:'var(--fg)'}}>{pctTime}%</div>
-        <div style={{fontSize:'.65rem',letterSpacing:'.15em',color:'var(--fg3)'}}>TIME ELAPSED</div>
-      </div>
-      <div style={{textAlign:'right'}}>
-        <div style={{fontSize:'1.5rem',fontWeight:700,color:pctRev>pctTime?'var(--ac)':'var(--err)'}}>{pctRev}%</div>
-        <div style={{fontSize:'.65rem',letterSpacing:'.15em',color:'var(--fg3)'}}>REVENUE</div>
-      </div>
+    <div className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div><div style={{fontSize:'2.5rem',fontWeight:800,color:'#00ff88',lineHeight:1}}>{daysLeft}</div><div style={{fontSize:'.65rem',letterSpacing:'.15em',color:'#555',marginTop:2}}>DAYS LEFT</div></div>
+      <div style={{textAlign:'center'}}><div style={{fontSize:'1.5rem',fontWeight:700}}>{pctTime}%</div><div style={{fontSize:'.65rem',letterSpacing:'.15em',color:'#555'}}>TIME USED</div></div>
+      <div style={{textAlign:'right'}}><div style={{fontSize:'1.5rem',fontWeight:700,color:pctRev>=pctTime?'#00ff88':'#ff4444'}}>{pctRev}%</div><div style={{fontSize:'.65rem',letterSpacing:'.15em',color:'#555'}}>REVENUE</div></div>
     </div>
 
     {/* REVENUE PROGRESS */}
-    <div className="card" style={{marginBottom:'1rem'}}>
-      <div className="lbl">Revenue — {fmtINR(state.rev)} / ₹80L</div>
-      <div style={{height:12,background:'var(--bg3)',borderRadius:6,overflow:'hidden',marginBottom:8}}>
-        <div style={{height:12,background:'var(--ac)',borderRadius:6,width:`${pctRev}%`,transition:'width .3s'}}/>
+    <div className="card">
+      <div className="lbl">Revenue \u2014 {fmtINR(state.rev)} / {'\u20B9'}80L</div>
+      <div style={{height:12,background:'#1a1a1a',borderRadius:6,overflow:'hidden',marginBottom:8}}>
+        <div style={{height:12,background:'#00ff88',borderRadius:6,width:`${pctRev}%`,transition:'width .3s'}}/>
       </div>
-      <div style={{display:'flex',justifyContent:'space-between',fontSize:'.72rem',color:'var(--fg3)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:'.72rem',color:'#555'}}>
         <span>{state.clients} clients signed</span>
         <span>Monthly target: {fmtINR(monthlyTarget)}</span>
       </div>
     </div>
 
-    {/* REVENUE BY STREAM */}
-    <div className="card" style={{marginBottom:'1rem'}}>
+    {/* REVENUE STREAMS */}
+    <div className="card">
       <div className="lbl" style={{marginBottom:8}}>Revenue by Stream</div>
       {STREAMS.map((name,i)=>(
         <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-          <span style={{fontSize:'.75rem',color:i<=1?'var(--fg)':'var(--fg4)',minWidth:150,flex:'0 0 150px'}}>{name}</span>
+          <span style={{fontSize:'.75rem',color:i<=1?'#fff':'#333',minWidth:150,flex:'0 0 150px'}}>{name}</span>
           <input className="inp" type="number" value={state.streams[i]||''} onChange={e=>updStream(i,e.target.value)}
-            placeholder="0" style={{fontFamily:'var(--mono)',fontSize:'.8rem',padding:'.4rem .6rem',textAlign:'right'}}/>
+            placeholder="0" style={{fontFamily:'JetBrains Mono,monospace',fontSize:'.8rem',padding:'.4rem .6rem',textAlign:'right'}}/>
         </div>
       ))}
-      <div style={{fontSize:'.72rem',color:'var(--fg3)',marginTop:6,textAlign:'right'}}>Total: {fmtINR(state.streams.reduce((a,b)=>a+b,0))}</div>
+      <div style={{fontSize:'.72rem',color:'#555',marginTop:6,textAlign:'right'}}>Total: {fmtINR(state.streams.reduce((a,b)=>a+b,0))}</div>
     </div>
 
-    {/* QUICK EDIT */}
-    <div className="card" style={{marginBottom:'1rem'}}>
+    {/* PIPELINE */}
+    <div className="card">
       <div className="lbl" style={{marginBottom:8}}>Pipeline & Leads</div>
       <div style={{display:'flex',gap:8}}>
-        <div style={{flex:1}}><div className="lbl">Clients</div><input className="inp" type="number" value={state.clients||''} onChange={e=>upd('clients',parseInt(e.target.value)||0)} style={{fontFamily:'var(--mono)',textAlign:'center'}}/></div>
-        <div style={{flex:1}}><div className="lbl">Pipeline (₹)</div><input className="inp" type="number" value={state.pipeline||''} onChange={e=>upd('pipeline',parseInt(e.target.value)||0)} style={{fontFamily:'var(--mono)',textAlign:'center'}}/></div>
-        <div style={{flex:1}}><div className="lbl">Leads</div><input className="inp" type="number" value={state.leads||''} onChange={e=>upd('leads',parseInt(e.target.value)||0)} style={{fontFamily:'var(--mono)',textAlign:'center'}}/></div>
+        <div style={{flex:1}}><div className="lbl">Clients</div><input className="inp" type="number" value={state.clients||''} onChange={e=>upd('clients',parseInt(e.target.value)||0)} style={{fontFamily:'monospace',textAlign:'center'}}/></div>
+        <div style={{flex:1}}><div className="lbl">Pipeline ({'\u20B9'})</div><input className="inp" type="number" value={state.pipeline||''} onChange={e=>upd('pipeline',parseInt(e.target.value)||0)} style={{fontFamily:'monospace',textAlign:'center'}}/></div>
+        <div style={{flex:1}}><div className="lbl">Leads</div><input className="inp" type="number" value={state.leads||''} onChange={e=>upd('leads',parseInt(e.target.value)||0)} style={{fontFamily:'monospace',textAlign:'center'}}/></div>
       </div>
     </div>
 
     {/* PHASE */}
-    <div className="card" style={{marginBottom:'1rem',borderLeft:'3px solid var(--ac)'}}>
+    <div className="card" style={{borderLeft:'3px solid #00ff88'}}>
       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-        <span style={{fontSize:'.65rem',color:'var(--ac)',letterSpacing:'.2em'}}>PHASE {phase.n}</span>
+        <span style={{fontSize:'.65rem',color:'#00ff88',letterSpacing:'.2em'}}>PHASE {phase.n}</span>
         <span style={{fontSize:'.95rem',fontWeight:700}}>{phase.name}</span>
-        <span style={{fontSize:'.65rem',color:'var(--fg4)'}}>{phase.w}</span>
+        <span style={{fontSize:'.65rem',color:'#333'}}>{phase.w}</span>
       </div>
-      <div style={{fontSize:'.78rem',color:'var(--fg2)',marginBottom:10}}>{phase.f}</div>
+      <div style={{fontSize:'.78rem',color:'#888',marginBottom:10}}>{phase.f}</div>
       <div className="lbl" style={{marginBottom:6}}>Phase Checklist</div>
-      {phase.tasks.map((task,i)=><div key={i} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:4}}>
-        <span style={{fontSize:'.75rem',color:'var(--fg4)',marginTop:1}}>☐</span>
-        <span style={{fontSize:'.78rem',color:'var(--fg2)'}}>{task}</span>
-      </div>)}
+      {phase.tasks.map((task,i)=>{
+        const id=phase.n+'-'+i;
+        const checked=(state.checkedTasks||[]).includes(id);
+        return(<div key={i} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:4,cursor:'pointer',opacity:checked?.5:1}} onClick={()=>toggleTask(id)}>
+          <span style={{fontSize:'.75rem',marginTop:1}}>{checked?'\u2611':'\u2610'}</span>
+          <span style={{fontSize:'.78rem',color:checked?'#333':'#888',textDecoration:checked?'line-through':'none'}}>{task}</span>
+        </div>)})}
     </div>
 
-    {/* TODAY'S SCHEDULE */}
-    <div className="card" style={{marginBottom:'1rem'}}>
+    {/* SCHEDULE */}
+    <div className="card">
       <div className="lbl" style={{marginBottom:10}}>{sched.label}</div>
       {sched.blocks.map((b,i)=>(
-        <div key={i} style={{display:'flex',gap:10,marginBottom:10,paddingBottom:10,borderBottom:'1px solid var(--bg3)'}}>
-          <div style={{minWidth:45,fontFamily:'var(--mono)',fontSize:'.75rem',color:'var(--fg4)',paddingTop:2}}>{b.t}</div>
+        <div key={i} style={{display:'flex',gap:10,marginBottom:10,paddingBottom:10,borderBottom:'1px solid #1a1a1a'}}>
+          <div style={{minWidth:45,fontFamily:'JetBrains Mono,monospace',fontSize:'.75rem',color:'#333',paddingTop:2}}>{b.t}</div>
           <div style={{width:3,borderRadius:2,background:b.c,flexShrink:0}}/>
-          <div>
-            <div style={{fontSize:'.85rem',fontWeight:500,color:'var(--fg)',marginBottom:2}}>{b.l}</div>
-            <div style={{fontSize:'.72rem',color:'var(--fg4)',lineHeight:1.3}}>{b.d}</div>
-          </div>
+          <div><div style={{fontSize:'.85rem',fontWeight:500,marginBottom:2}}>{b.l}</div><div style={{fontSize:'.72rem',color:'#333',lineHeight:1.3}}>{b.d}</div></div>
         </div>
       ))}
     </div>
 
     {/* LOG */}
-    <div className="card" style={{marginBottom:'1rem'}}>
+    <div className="card">
       <div className="lbl" style={{marginBottom:8}}>Activity Log</div>
       <div style={{display:'flex',gap:6,marginBottom:10}}>
         <input className="inp" value={logInput} onChange={e=>setLogInput(e.target.value)} placeholder="Signed new client, sent 20 emails..."
           onKeyDown={e=>{if(e.key==='Enter'&&logInput.trim()){addLog(logInput.trim());setLogInput('')}}}/>
         <button onClick={()=>{if(logInput.trim()){addLog(logInput.trim());setLogInput('')}}}
-          style={{background:'var(--ac)',color:'var(--bg)',border:'none',borderRadius:5,padding:'0 12px',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',fontSize:'.75rem'}}>+ Log</button>
+          style={{background:'#00ff88',color:'#000',border:'none',borderRadius:5,padding:'0 12px',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',fontSize:'.75rem'}}>+ Log</button>
       </div>
-      {state.log.slice(0,10).map((entry,i)=>(
+      {(state.log||[]).slice(0,10).map((entry,i)=>(
         <div key={i} style={{display:'flex',gap:8,marginBottom:6,fontSize:'.75rem'}}>
-          <span style={{color:'var(--fg4)',fontFamily:'var(--mono)',minWidth:75}}>{entry.date}</span>
-          <span style={{color:'var(--fg2)'}}>{entry.note}</span>
-          {entry.rev>0&&<span style={{color:'var(--ac)',marginLeft:'auto'}}>{fmtINR(entry.rev)}</span>}
+          <span style={{color:'#333',fontFamily:'monospace',minWidth:75}}>{entry.date}</span>
+          <span style={{color:'#888'}}>{entry.note}</span>
+          {entry.rev>0&&<span style={{color:'#00ff88',marginLeft:'auto'}}>{fmtINR(entry.rev)}</span>}
         </div>
       ))}
-      {state.log.length===0&&<div style={{fontSize:'.75rem',color:'var(--fg4)'}}>No entries yet. Log your daily wins.</div>}
+      {(!state.log||state.log.length===0)&&<div style={{fontSize:'.75rem',color:'#333'}}>No entries yet. Log your daily wins.</div>}
     </div>
 
-    {/* WALLPAPER URL */}
-    <div className="card" style={{marginBottom:'1rem',borderLeft:'3px solid var(--warn)'}}>
-      <div className="lbl" style={{marginBottom:6}}>📱 iPhone Wallpaper Shortcut</div>
-      <div style={{fontSize:'.72rem',color:'var(--fg3)',marginBottom:8,lineHeight:1.4}}>
-        Copy this URL into your iOS Shortcut. Schedule it to run every hour for live wallpaper updates.
+    {/* WALLPAPER */}
+    <div className="card" style={{borderLeft:'3px solid #ffaa00'}}>
+      <div className="lbl" style={{marginBottom:6}}>iPhone Wallpaper Shortcut</div>
+      <div style={{fontSize:'.72rem',color:'#555',marginBottom:8,lineHeight:1.4}}>
+        Data is stored on the server. The wallpaper auto-reads it. Just set up the Shortcut once \u2014 no need to update the URL when you change data.
       </div>
-      <div style={{background:'var(--bg)',borderRadius:5,padding:8,marginBottom:8,border:'1px solid var(--bg3)'}}>
-        <code style={{fontSize:'.65rem',color:'var(--warn)',wordBreak:'break-all',fontFamily:'var(--mono)',lineHeight:1.4}}>{wpUrl}</code>
+      <div style={{background:'#000',borderRadius:5,padding:8,marginBottom:8,border:'1px solid #1a1a1a'}}>
+        <code style={{fontSize:'.65rem',color:'#ffaa00',wordBreak:'break-all',fontFamily:'JetBrains Mono,monospace',lineHeight:1.4}}>{wpUrl}</code>
       </div>
       <div style={{display:'flex',gap:6}}>
-        <button onClick={copy} style={{flex:1,padding:'8px 0',background:copied?'var(--ac)':'var(--bg)',color:copied?'var(--bg)':'var(--warn)',border:'1px solid var(--warn)',borderRadius:5,fontWeight:600,cursor:'pointer',fontSize:'.75rem'}}>
-          {copied?'✓ COPIED':'COPY URL'}
+        <button onClick={()=>{navigator.clipboard.writeText(wpUrl);setCopied(true);setTimeout(()=>setCopied(false),2000)}}
+          style={{flex:1,padding:'8px 0',background:copied?'#00ff88':'#000',color:copied?'#000':'#ffaa00',border:'1px solid #ffaa00',borderRadius:5,fontWeight:600,cursor:'pointer',fontSize:'.75rem'}}>
+          {copied?'\u2713 COPIED':'COPY URL'}
         </button>
-        <a href={wpUrl} target="_blank" rel="noopener noreferrer" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'8px 0',background:'var(--bg)',color:'var(--fg3)',border:'1px solid var(--bg3)',borderRadius:5,textDecoration:'none',fontWeight:600,fontSize:'.75rem'}}>
-          PREVIEW ↗
-        </a>
+        <a href={wpUrl} target="_blank" rel="noopener noreferrer" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'8px 0',background:'#000',color:'#555',border:'1px solid #1a1a1a',borderRadius:5,textDecoration:'none',fontWeight:600,fontSize:'.75rem'}}>PREVIEW</a>
       </div>
-      <div style={{fontSize:'.65rem',color:'var(--fg4)',marginTop:8,lineHeight:1.5}}>
-        <strong style={{color:'var(--fg3)'}}>Shortcut setup:</strong><br/>
-        1. Open Shortcuts → New Shortcut<br/>
-        2. Add "Get Contents of URL" → paste the URL above<br/>
-        3. Add "Set Wallpaper" → set to Lock Screen<br/>
-        4. Go to Automations → Time of Day → Every hour → Run this shortcut
+      <div style={{fontSize:'.65rem',color:'#333',marginTop:8,lineHeight:1.5}}>
+        <strong style={{color:'#555'}}>Shortcut setup:</strong><br/>
+        1. Shortcuts \u2192 New \u2192 "Get Contents of URL" \u2192 paste URL<br/>
+        2. "Set Wallpaper" \u2192 Contents of URL \u2192 Lock Screen<br/>
+        3. Automations \u2192 Time of Day \u2192 Every hour \u2192 Run shortcut
       </div>
     </div>
 
     {/* CUSTOM MESSAGE */}
-    <div className="card" style={{marginBottom:'1rem'}}>
+    <div className="card">
       <div className="lbl" style={{marginBottom:6}}>Custom Wallpaper Message</div>
-      <input className="inp" value={state.msg} onChange={e=>upd('msg',e.target.value)} placeholder="Override the daily motivational quote"/>
-      <div style={{fontSize:'.65rem',color:'var(--fg4)',marginTop:4}}>Leave empty for auto-rotating daily quotes</div>
+      <input className="inp" value={state.msg||''} onChange={e=>upd('msg',e.target.value)} placeholder="Override the daily motivational quote"/>
+      <div style={{fontSize:'.65rem',color:'#333',marginTop:4}}>Leave empty for auto-rotating daily quotes</div>
+    </div>
+
+    {/* OUTREACH REF */}
+    <div className="card">
+      <div className="lbl" style={{marginBottom:8}}>Outreach Quick Ref</div>
+      <div style={{fontSize:'.78rem',color:'#888',lineHeight:1.6}}>
+        <div style={{marginBottom:4}}><span style={{color:'#00ff88'}}>India</span> \u2192 Email + LinkedIn simultaneous</div>
+        <div style={{marginBottom:4}}><span style={{color:'#ffaa00'}}>Gulf</span> \u2192 LinkedIn FIRST, email 2-3 days later</div>
+        <div style={{marginBottom:4}}><span style={{color:'#5BA0D6'}}>ANZ/SEA</span> \u2192 Email + LinkedIn + Loom mandatory</div>
+      </div>
+      <div style={{fontSize:'.72rem',color:'#333',marginTop:6}}>Audit {'\u20B9'}75K-$3K \u00b7 Retainer {'\u20B9'}2-3.5L/$4-6K/mo \u00b7 Project {'\u20B9'}5-12L/$10-25K</div>
     </div>
 
     {/* KILL LIST */}
-    <div className="card" style={{marginBottom:'1rem',opacity:.7}}>
-      <div className="lbl" style={{marginBottom:8,color:'var(--err)'}}>🚫 Kill List — Paused 8 Months</div>
-      <div style={{fontSize:'.78rem',color:'var(--fg4)',lineHeight:1.6}}>
-        • Polymarket bot — passive only, no dev time<br/>
-        • Smæccan — advisory 1hr/wk max<br/>
-        • Parvani — fully paused<br/>
-        • D2C platform — paused until ₹50L revenue<br/>
-        • All side projects — zero time
-      </div>
-    </div>
-
-    {/* OUTREACH QUICK REF */}
-    <div className="card" style={{marginBottom:'1rem'}}>
-      <div className="lbl" style={{marginBottom:8}}>Outreach Quick Ref</div>
-      <div style={{fontSize:'.78rem',color:'var(--fg2)',lineHeight:1.6}}>
-        <div style={{display:'flex',gap:6,marginBottom:4}}><span style={{color:'var(--ac)'}}>India</span><span style={{color:'var(--fg4)'}}>→</span><span>Email + LinkedIn simultaneous</span></div>
-        <div style={{display:'flex',gap:6,marginBottom:4}}><span style={{color:'var(--warn)'}}>Gulf</span><span style={{color:'var(--fg4)'}}>→</span><span>LinkedIn FIRST, email 2-3 days later</span></div>
-        <div style={{display:'flex',gap:6,marginBottom:4}}><span style={{color:'#5BA0D6'}}>ANZ/SEA</span><span style={{color:'var(--fg4)'}}>→</span><span>Email + LinkedIn + Loom mandatory</span></div>
-      </div>
-      <div style={{fontSize:'.72rem',color:'var(--fg4)',marginTop:6}}>
-        Service tiers: Audit ₹75K-$3K · Retainer ₹2-3.5L/$4-6K/mo · Project ₹5-12L/$10-25K
+    <div className="card" style={{opacity:.6}}>
+      <div className="lbl" style={{color:'#ff4444',marginBottom:8}}>Kill List \u2014 Paused 8 Months</div>
+      <div style={{fontSize:'.78rem',color:'#333',lineHeight:1.6}}>
+        Polymarket bot \u2014 passive only<br/>Smaeccan \u2014 advisory 1hr/wk max<br/>Parvani \u2014 fully paused<br/>D2C platform \u2014 paused until {'\u20B9'}50L<br/>All side projects \u2014 zero time
       </div>
     </div>
 
     {/* RESET */}
     <div style={{textAlign:'center',marginTop:'2rem'}}>
-      <button onClick={()=>{if(confirm('Reset all data? This clears revenue, logs, everything.')){save(defaults)}}}
-        style={{background:'none',border:'1px solid #220000',color:'var(--err)',padding:'6px 16px',borderRadius:5,fontSize:'.7rem',cursor:'pointer',opacity:.5}}>
-        Reset All Data
-      </button>
+      <button onClick={()=>{if(confirm('Reset all data?')){saveToServer({...DEFAULTS})}}}
+        style={{background:'none',border:'1px solid #220000',color:'#ff4444',padding:'6px 16px',borderRadius:5,fontSize:'.7rem',cursor:'pointer',opacity:.5}}>Reset All Data</button>
     </div>
   </div>)}
 

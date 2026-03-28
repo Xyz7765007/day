@@ -1,38 +1,84 @@
-const BLOB_FILE = 'vox-tracker.json';
-const DEFAULTS = { rev: 0, clients: 0, pipeline: 0, leads: 89, msg: '', streams: [0,0,0,0,0,0], log: [], checkedTasks: [] };
+const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appZZ70GXx8dSYEbA';
+const TABLE = 'Tracker';
+const AT_URL = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE)}`;
 
-async function blobGet(token) {
-  const r = await fetch(`https://blob.vercel-storage.com?prefix=${BLOB_FILE}&limit=1`, {
-    headers: { authorization: `Bearer ${token}` }
-  });
-  const list = await r.json();
-  if (!list.blobs || !list.blobs.length) return null;
-  const dr = await fetch(list.blobs[0].url);
-  return await dr.json();
+const DEFAULTS = { rev: 0, clients: 0, pipeline: 0, leads: 89, msg: '', streams: [0,0,0,0,0,0], log: [], checkedTasks: [] };
+const STREAM_KEYS = ['stream_sidekick','stream_voxelised','stream_smaeccan','stream_parvani','stream_d2c','stream_polymarket'];
+
+function getToken() {
+  return process.env.AIRTABLE_TOKEN;
 }
 
-async function blobPut(token, data) {
-  // Delete old
-  try {
-    const lr = await fetch(`https://blob.vercel-storage.com?prefix=${BLOB_FILE}`, {
-      headers: { authorization: `Bearer ${token}` }
-    });
-    const list = await lr.json();
-    if (list.blobs?.length) {
-      await fetch('https://blob.vercel-storage.com/delete', {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ urls: list.blobs.map(b => b.url) })
-      });
-    }
-  } catch (e) {}
-  // Write new
-  const r = await fetch(`https://blob.vercel-storage.com/${BLOB_FILE}`, {
-    method: 'PUT',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify(data)
+// Find the 'main' record
+async function atGet(token) {
+  const r = await fetch(`${AT_URL}?filterByFormula={key}="main"&maxRecords=1`, {
+    headers: { Authorization: `Bearer ${token}` }
   });
-  if (!r.ok) throw new Error('Blob write: ' + (await r.text()).slice(0, 200));
+  if (!r.ok) throw new Error('Airtable GET: ' + (await r.text()).slice(0, 300));
+  const data = await r.json();
+  if (!data.records || !data.records.length) return { recordId: null, state: null };
+
+  const rec = data.records[0];
+  const f = rec.fields;
+  const streams = STREAM_KEYS.map(k => parseInt(f[k]) || 0);
+
+  let log = [];
+  try { log = JSON.parse(f.log || '[]'); } catch (e) {}
+
+  let checkedTasks = [];
+  try { checkedTasks = JSON.parse(f.checkedTasks || '[]'); } catch (e) {}
+
+  return {
+    recordId: rec.id,
+    state: {
+      rev: parseInt(f.rev) || 0,
+      clients: parseInt(f.clients) || 0,
+      pipeline: parseInt(f.pipeline) || 0,
+      leads: parseInt(f.leads) || 0,
+      msg: f.msg || '',
+      streams,
+      log,
+      checkedTasks,
+    }
+  };
+}
+
+// Update or create the 'main' record
+async function atSave(token, state, recordId) {
+  const fields = {
+    key: 'main',
+    rev: state.rev || 0,
+    clients: state.clients || 0,
+    pipeline: state.pipeline || 0,
+    leads: state.leads || 0,
+    msg: state.msg || '',
+    checkedTasks: JSON.stringify(state.checkedTasks || []),
+    log: JSON.stringify((state.log || []).slice(0, 100)),
+  };
+  // Spread streams into separate fields
+  (state.streams || []).forEach((v, i) => {
+    if (STREAM_KEYS[i]) fields[STREAM_KEYS[i]] = v || 0;
+  });
+
+  if (recordId) {
+    // Update existing
+    const r = await fetch(`${AT_URL}/${recordId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields })
+    });
+    if (!r.ok) throw new Error('Airtable PATCH: ' + (await r.text()).slice(0, 300));
+    return await r.json();
+  } else {
+    // Create new
+    const r = await fetch(AT_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records: [{ fields }] })
+    });
+    if (!r.ok) throw new Error('Airtable POST: ' + (await r.text()).slice(0, 300));
+    return await r.json();
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -41,19 +87,22 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN not set. Link Blob store to project.' });
+  const token = getToken();
+  if (!token) return res.status(500).json({ error: 'AIRTABLE_TOKEN not set. Add it in Vercel Environment Variables.' });
 
   try {
     if (req.method === 'GET') {
-      const data = await blobGet(token);
-      return res.status(200).json(data || DEFAULTS);
+      const { state } = await atGet(token);
+      return res.status(200).json(state || DEFAULTS);
     }
     if (req.method === 'POST') {
-      const current = (await blobGet(token)) || DEFAULTS;
-      const merged = { ...DEFAULTS, ...current, ...req.body };
-      if (merged.log?.length > 100) merged.log = merged.log.slice(0, 100);
-      await blobPut(token, merged);
+      const body = req.body;
+      if (!body || typeof body !== 'object') return res.status(400).json({ error: 'Invalid body' });
+
+      // Get existing record ID
+      const { recordId } = await atGet(token);
+      const merged = { ...DEFAULTS, ...body };
+      await atSave(token, merged, recordId);
       return res.status(200).json({ ok: true });
     }
     return res.status(405).json({ error: 'Method not allowed' });

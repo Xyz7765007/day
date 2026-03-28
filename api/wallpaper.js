@@ -7,7 +7,11 @@ async function getSatori() {
   return satoriModule;
 }
 
-const BLOB_FILE = 'vox-tracker.json';
+const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appZZ70GXx8dSYEbA';
+const TABLE = 'Tracker';
+const AT_URL = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE)}`;
+const STREAM_KEYS = ['stream_sidekick','stream_voxelised','stream_smaeccan','stream_parvani','stream_d2c','stream_polymarket'];
+
 const TARGET_DATE = new Date('2026-11-30T23:59:59');
 const START_DATE = new Date('2026-03-29');
 const TARGET_REV = 8000000;
@@ -32,13 +36,20 @@ async function getFontBold() {
 async function getData(token) {
   if (!token) return null;
   try {
-    const r = await fetch(`https://blob.vercel-storage.com?prefix=${BLOB_FILE}&limit=1`, {
-      headers: { authorization: `Bearer ${token}` }
+    const r = await fetch(`${AT_URL}?filterByFormula={key}="main"&maxRecords=1`, {
+      headers: { Authorization: `Bearer ${token}` }
     });
-    const list = await r.json();
-    if (!list.blobs || !list.blobs.length) return null;
-    const dr = await fetch(list.blobs[0].url);
-    return await dr.json();
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!data.records || !data.records.length) return null;
+    const f = data.records[0].fields;
+    return {
+      rev: parseInt(f.rev) || 0,
+      clients: parseInt(f.clients) || 0,
+      pipeline: parseInt(f.pipeline) || 0,
+      leads: parseInt(f.leads) || 0,
+      msg: f.msg || '',
+    };
   } catch (e) { return null; }
 }
 
@@ -111,7 +122,7 @@ module.exports = async function handler(req, res) {
   const w = parseInt(req.query.width || req.query.w) || 1170;
   const hh = parseInt(req.query.height || req.query.h) || 2532;
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const token = process.env.AIRTABLE_TOKEN;
   let st = { rev: 0, clients: 0, pipeline: 0, leads: 89, msg: '' };
   const bd = await getData(token);
   if (bd) st = { ...st, ...bd };

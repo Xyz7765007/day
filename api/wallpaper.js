@@ -1,5 +1,4 @@
 import { ImageResponse } from '@vercel/og';
-import { kv } from '@vercel/kv';
 
 export const config = { runtime: 'edge' };
 
@@ -7,44 +6,52 @@ const TARGET_DATE = new Date('2026-11-30T23:59:59');
 const START_DATE = new Date('2026-03-29T00:00:00');
 const TARGET_REV = 8000000;
 
+async function getData() {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) return null;
+  try {
+    const r = await fetch(`${url}/get/voxelised_tracker`, { headers: { Authorization: `Bearer ${token}` } });
+    const d = await r.json();
+    return d.result ? JSON.parse(d.result) : null;
+  } catch (e) { return null; }
+}
+
 function getPhase(d) {
-  if (d < 14) return { n: '01', name: 'FOUNDATION', f: 'Entity · Warming · Outreach · Case study' };
-  if (d < 28) return { n: '02', name: 'OUTBOUND', f: 'Cold sequences · LinkedIn · Discovery calls' };
-  if (d < 56) return { n: '03', name: 'PIPELINE', f: 'Full outbound · Proposals · Close deals' };
-  if (d < 120) return { n: '04', name: 'REVENUE', f: 'Deliver · Expand · Retainer upsells' };
-  return { n: '05', name: 'SCALE', f: 'Referrals · Raise rates · Build team' };
+  if (d < 14) return { n: '01', name: 'FOUNDATION', f: 'Entity setup / Warming / Outreach / Case study' };
+  if (d < 28) return { n: '02', name: 'OUTBOUND', f: 'Cold sequences / LinkedIn / Discovery calls' };
+  if (d < 56) return { n: '03', name: 'PIPELINE', f: 'Full outbound / Proposals / Close deals' };
+  if (d < 120) return { n: '04', name: 'REVENUE', f: 'Deliver / Expand / Retainer upsells' };
+  return { n: '05', name: 'SCALE', f: 'Referrals / Raise rates / Build team' };
 }
 
 function getSched(dow) {
-  const W = [
-    { t: '07:00', l: 'Pipeline review + responses', c: '#888' },
-    { t: '08:00', l: 'LinkedIn — 20 connects', c: '#5BA0D6' },
-    { t: '09:00', l: 'Cold email sequences', c: '#00ff88' },
-    { t: '10:00', l: 'Side Kick deliverables', c: '#ffaa00' },
-    { t: '13:00', l: 'Keto lunch + break', c: '#333' },
-    { t: '14:00', l: 'Voxelised build & deliver', c: '#00ff88' },
-    { t: '16:00', l: 'Follow-ups · proposals · calls', c: '#ff6b6b' },
-    { t: '17:00', l: 'Case study / Loom / content', c: '#c084fc' },
-    { t: '19:00', l: 'Evening review + plan tmrw', c: '#888' },
+  if (dow === 0) return [
+    { t: '10:00', l: 'Light planning + inbox zero', c: '#888' },
+    { t: '11:00', l: 'Smaeccan advisory (1hr)', c: '#ffaa00' },
+    { t: '12:00', l: 'Relationship texting', c: '#ff6b6b' },
+    { t: '14:00', l: 'Rest / dogs / recharge', c: '#333' },
+    { t: '18:00', l: 'Prep Monday - 3 priorities', c: '#00ff88' },
   ];
-  const SA = [
+  if (dow === 6) return [
     { t: '09:00', l: 'Weekly metrics review', c: '#ffaa00' },
     { t: '10:00', l: 'Plan next week outreach', c: '#00ff88' },
     { t: '12:00', l: 'Case study + website', c: '#c084fc' },
     { t: '14:00', l: 'Pipeline cleanup', c: '#5BA0D6' },
-    { t: '16:00', l: 'Content batch — LinkedIn', c: '#c084fc' },
+    { t: '16:00', l: 'Content batch - LinkedIn', c: '#c084fc' },
     { t: '18:00', l: 'Free evening', c: '#333' },
   ];
-  const SU = [
-    { t: '10:00', l: 'Light planning + inbox zero', c: '#888' },
-    { t: '11:00', l: 'Smaeccan advisory (1hr)', c: '#ffaa00' },
-    { t: '12:00', l: 'Relationship texting', c: '#ff6b6b' },
-    { t: '14:00', l: 'Rest · dogs · recharge', c: '#333' },
-    { t: '18:00', l: 'Prep Monday — 3 priorities', c: '#00ff88' },
+  return [
+    { t: '07:00', l: 'Pipeline review + responses', c: '#888' },
+    { t: '08:00', l: 'LinkedIn - 20 connects', c: '#5BA0D6' },
+    { t: '09:00', l: 'Cold email sequences', c: '#00ff88' },
+    { t: '10:00', l: 'Side Kick deliverables', c: '#ffaa00' },
+    { t: '13:00', l: 'Keto lunch + break', c: '#333' },
+    { t: '14:00', l: 'Voxelised build + deliver', c: '#00ff88' },
+    { t: '16:00', l: 'Follow-ups / proposals / calls', c: '#ff6b6b' },
+    { t: '17:00', l: 'Case study / Loom / content', c: '#c084fc' },
+    { t: '19:00', l: 'Evening review + plan tmrw', c: '#888' },
   ];
-  if (dow === 0) return SU;
-  if (dow === 6) return SA;
-  return W;
 }
 
 const QUOTES = [
@@ -62,7 +69,6 @@ const QUOTES = [
   "Warm leads > cold leads > no leads.",
   "The compounding starts now.",
   "Pipeline is the product.",
-  "Every no is a not yet.",
 ];
 
 function fmtINR(n) {
@@ -77,13 +83,12 @@ export default async function handler(req) {
   const w = parseInt(searchParams.get('width') || searchParams.get('w')) || 1170;
   const h = parseInt(searchParams.get('height') || searchParams.get('h')) || 2532;
 
-  // Read from KV
+  // Read from KV, fallback to URL params
   let state = { rev: 0, clients: 0, pipeline: 0, leads: 89, msg: '' };
-  try {
-    const kvData = await kv.get('voxelised_tracker_state');
-    if (kvData) state = { ...state, ...kvData };
-  } catch (e) {
-    // KV not available, use defaults + URL params as fallback
+  const kvData = await getData();
+  if (kvData) {
+    state = { ...state, ...kvData };
+  } else {
     state.rev = parseInt(searchParams.get('rev')) || 0;
     state.clients = parseInt(searchParams.get('clients')) || 0;
     state.pipeline = parseInt(searchParams.get('pipeline')) || 0;
@@ -111,7 +116,6 @@ export default async function handler(req) {
     (
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: '#000', fontFamily: 'sans-serif', color: '#fff', padding: `${p(320)}px ${p(60)}px ${p(140)}px` }}>
 
-        {/* HEADER: Days Left + Date */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: `${p(6)}px` }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: `${p(8)}px` }}>
             <span style={{ fontSize: p(68), fontWeight: 800, color: '#00ff88', lineHeight: 1 }}>{daysLeft}</span>
@@ -123,12 +127,10 @@ export default async function handler(req) {
           </div>
         </div>
 
-        {/* TIME BAR */}
         <div style={{ display: 'flex', height: `${p(3)}px`, background: '#1a1a1a', borderRadius: `${p(2)}px`, marginBottom: `${p(24)}px`, overflow: 'hidden' }}>
           <div style={{ display: 'flex', width: `${pctTime}%`, height: '100%', background: '#333' }}></div>
         </div>
 
-        {/* REVENUE */}
         <div style={{ display: 'flex', flexDirection: 'column', marginBottom: `${p(24)}px` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: `${p(6)}px` }}>
             <span style={{ fontSize: p(12), color: '#555', letterSpacing: '0.2em' }}>REVENUE</span>
@@ -145,7 +147,6 @@ export default async function handler(req) {
           </div>
         </div>
 
-        {/* PHASE */}
         <div style={{ display: 'flex', background: '#0a0a0a', borderRadius: `${p(10)}px`, padding: `${p(14)}px ${p(16)}px`, marginBottom: `${p(24)}px`, border: '1px solid #1a1a1a' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: `${p(8)}px`, marginBottom: `${p(4)}px` }}>
@@ -156,9 +157,8 @@ export default async function handler(req) {
           </div>
         </div>
 
-        {/* SCHEDULE */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-          <span style={{ fontSize: p(10), color: '#333', letterSpacing: '0.25em', marginBottom: `${p(12)}px` }}>{"TODAY'S BLOCKS"}</span>
+          <span style={{ fontSize: p(10), color: '#333', letterSpacing: '0.25em', marginBottom: `${p(12)}px` }}>{"TODAY"}</span>
           {sched.map((b, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: `${p(9)}px`, gap: `${p(10)}px` }}>
               <span style={{ fontSize: p(12), color: '#333', minWidth: `${p(46)}px`, fontFamily: 'monospace' }}>{b.t}</span>
@@ -168,7 +168,6 @@ export default async function handler(req) {
           ))}
         </div>
 
-        {/* BOTTOM STATS */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: `${p(12)}px`, paddingTop: `${p(14)}px`, borderTop: '1px solid #111' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: p(20), fontWeight: 700 }}>{fmtINR(Math.round(TARGET_REV / totalDays * daysSince))}</span>
@@ -184,7 +183,6 @@ export default async function handler(req) {
           </div>
         </div>
 
-        {/* QUOTE */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: `${p(16)}px` }}>
           <span style={{ fontSize: p(12), color: '#333', fontStyle: 'italic', textAlign: 'center' }}>{quote}</span>
         </div>

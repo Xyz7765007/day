@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@vercel/og": "^0.6.8",
-    "@vercel/kv": "^2.0.0"
+    "@vercel/og": "^0.6.8"
   }
 }

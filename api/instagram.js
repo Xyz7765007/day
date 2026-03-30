@@ -145,104 +145,104 @@ module.exports = async function handler(req, res) {
     style: {
       display: 'flex', flexDirection: 'column', width: '100%', height: '100%',
       background: '#000', color: '#fff', fontFamily: 'Inter',
-      padding: '12px 52px 20px',
+      padding: '16px 56px 24px',
     }
   },
     // Green accent top
     h('div', { style: { display: 'flex', width: '100%', height: '3px', background: '#00ff88', position: 'absolute', top: 0, left: 0 } }),
 
     // Title
-    h('div', { style: { display: 'flex', justifyContent: 'center', marginBottom: '6px', marginTop: '8px' } },
-      h('span', { style: { fontSize: '22px', fontWeight: 700, color: '#fff', letterSpacing: '1px' } },
-        `0 → 80L  |  DAY ${dayNum} OF ${tDays}`
+    h('div', { style: { display: 'flex', justifyContent: 'center', marginBottom: '8px', marginTop: '12px' } },
+      h('span', { style: { fontSize: '26px', fontWeight: 700, color: '#fff', letterSpacing: '2px' } },
+        `0 > 80L  |  DAY ${dayNum} OF ${tDays}`
       ),
     ),
-    h('div', { style: { display: 'flex', height: '1px', background: '#1a1a1a', width: '100%', marginBottom: '14px' } }),
+    h('div', { style: { display: 'flex', height: '1px', background: '#1a1a1a', width: '100%', marginBottom: '20px' } }),
 
     // Days left row
-    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '4px' } },
-      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: '8px' } },
-        h('span', { style: { fontSize: '80px', fontWeight: 700, color: '#00ff88', lineHeight: 1 } }, String(dLeft)),
-        h('span', { style: { fontSize: '20px', color: '#555', letterSpacing: '3px' } }, 'DAYS LEFT'),
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' } },
+      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: '10px' } },
+        h('span', { style: { fontSize: '100px', fontWeight: 700, color: '#00ff88', lineHeight: 1 } }, String(dLeft)),
+        h('span', { style: { fontSize: '24px', color: '#555', letterSpacing: '4px' } }, 'DAYS LEFT'),
       ),
       h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
-        h('span', { style: { fontSize: '14px', color: '#444', letterSpacing: '2px' } }, `WEEK ${wk}`),
-        h('span', { style: { fontSize: '18px', color: '#888' } }, `${dn[dow]} ${mn[now.getMonth()]} ${now.getDate()}`),
+        h('span', { style: { fontSize: '16px', color: '#444', letterSpacing: '3px' } }, `WEEK ${wk}`),
+        h('span', { style: { fontSize: '22px', color: '#888' } }, `${dn[dow]} ${mn[now.getMonth()]} ${now.getDate()}`),
       ),
     ),
 
     // Time bar
-    h('div', { style: { display: 'flex', height: '4px', background: '#1a1a1a', borderRadius: '2px', marginBottom: '14px', overflow: 'hidden', width: '100%' } },
+    h('div', { style: { display: 'flex', height: '5px', background: '#1a1a1a', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden', width: '100%' } },
       h('div', { style: { display: 'flex', width: `${Math.max(pctT, 1)}%`, height: '100%', background: '#444' } }),
     ),
 
     // Revenue label
-    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '6px' } },
-      h('span', { style: { fontSize: '14px', color: '#555', letterSpacing: '3px' } }, 'REVENUE'),
-      h('span', { style: { fontSize: '14px', color: '#555' } }, `${fmtINR(rev)} / Rs.80L`),
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } },
+      h('span', { style: { fontSize: '16px', color: '#555', letterSpacing: '4px' } }, 'REVENUE'),
+      h('span', { style: { fontSize: '16px', color: '#555' } }, `${fmtINR(rev)} / Rs.80L`),
     ),
 
     // Revenue bar
-    h('div', { style: { display: 'flex', height: '20px', background: '#111', borderRadius: '10px', marginBottom: '6px', overflow: 'hidden', width: '100%' } },
-      h('div', { style: { display: 'flex', width: `${Math.max(pctR, 1)}%`, height: '100%', background: pctR > 0 ? '#00ff88' : '#111', borderRadius: '10px' } }),
+    h('div', { style: { display: 'flex', height: '24px', background: '#111', borderRadius: '12px', marginBottom: '8px', overflow: 'hidden', width: '100%' } },
+      h('div', { style: { display: 'flex', width: `${Math.max(pctR, 1)}%`, height: '100%', background: pctR > 0 ? '#00ff88' : '#111', borderRadius: '12px' } }),
     ),
 
     // Sub info
-    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '14px' } },
-      h('span', { style: { fontSize: '14px', color: '#444' } }, `${clients} clients  |  ${leads} leads`),
-      pipeline > 0 ? h('span', { style: { fontSize: '14px', color: '#ffaa00' } }, `${fmtINR(pipeline)} pipeline`) : null,
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px' } },
+      h('span', { style: { fontSize: '16px', color: '#444' } }, `${clients} clients  |  ${leads} leads`),
+      pipeline > 0 ? h('span', { style: { fontSize: '16px', color: '#ffaa00' } }, `${fmtINR(pipeline)} pipeline`) : null,
     ),
 
     // Phase box
-    h('div', { style: { display: 'flex', flexDirection: 'column', background: '#0a0a0a', borderRadius: '10px', padding: '12px 18px', marginBottom: '14px', border: '1px solid #1a1a1a' } },
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' } },
-        h('span', { style: { fontSize: '12px', color: '#00ff88', letterSpacing: '4px' } }, `PHASE ${phase.n}`),
-        h('span', { style: { fontSize: '18px', fontWeight: 700, color: '#fff' } }, phase.name),
+    h('div', { style: { display: 'flex', flexDirection: 'column', background: '#0a0a0a', borderRadius: '12px', padding: '16px 22px', marginBottom: '20px', border: '1px solid #1a1a1a' } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' } },
+        h('span', { style: { fontSize: '14px', color: '#00ff88', letterSpacing: '5px' } }, `PHASE ${phase.n}`),
+        h('span', { style: { fontSize: '22px', fontWeight: 700, color: '#fff' } }, phase.name),
       ),
-      h('span', { style: { fontSize: '13px', color: '#555' } }, phase.f),
+      h('span', { style: { fontSize: '15px', color: '#555' } }, phase.f),
     ),
 
     // TODAY
-    h('span', { style: { fontSize: '12px', color: '#444', letterSpacing: '4px', marginBottom: '8px' } }, 'TODAY'),
+    h('span', { style: { fontSize: '14px', color: '#444', letterSpacing: '5px', marginBottom: '12px' } }, 'TODAY'),
 
     // Schedule
-    h('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '14px' } },
+    h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, gap: '0px' } },
       ...sched.map(item =>
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 0' } },
-          h('span', { style: { fontSize: '15px', color: '#444', minWidth: '55px' } }, item.t),
-          h('div', { style: { display: 'flex', width: '8px', height: '8px', borderRadius: '4px', background: item.c } }),
-          h('span', { style: { fontSize: '16px', color: '#ccc' } }, item.l),
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', padding: '7px 0' } },
+          h('span', { style: { fontSize: '18px', color: '#444', minWidth: '65px' } }, item.t),
+          h('div', { style: { display: 'flex', width: '10px', height: '10px', borderRadius: '5px', background: item.c } }),
+          h('span', { style: { fontSize: '19px', color: '#ccc' } }, item.l),
         )
       ),
     ),
 
     // Divider
-    h('div', { style: { display: 'flex', height: '1px', background: '#1a1a1a', width: '100%', marginBottom: '14px' } }),
+    h('div', { style: { display: 'flex', height: '1px', background: '#1a1a1a', width: '100%', marginTop: '16px', marginBottom: '18px' } }),
 
     // Stats row
-    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' } },
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '14px' } },
       h('div', { style: { display: 'flex', flexDirection: 'column' } },
-        h('span', { style: { fontSize: '26px', fontWeight: 700, color: '#fff' } }, fmtINR(targetPace)),
-        h('span', { style: { fontSize: '10px', color: '#444', letterSpacing: '2px' } }, 'TARGET PACE'),
+        h('span', { style: { fontSize: '32px', fontWeight: 700, color: '#fff' } }, fmtINR(targetPace)),
+        h('span', { style: { fontSize: '12px', color: '#444', letterSpacing: '3px' } }, 'TARGET PACE'),
       ),
       h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } },
-        h('span', { style: { fontSize: '26px', fontWeight: 700, color: rev > 0 ? '#00ff88' : '#444' } }, fmtINR(rev)),
-        h('span', { style: { fontSize: '10px', color: '#444', letterSpacing: '2px' } }, 'EARNED'),
+        h('span', { style: { fontSize: '32px', fontWeight: 700, color: rev > 0 ? '#00ff88' : '#444' } }, fmtINR(rev)),
+        h('span', { style: { fontSize: '12px', color: '#444', letterSpacing: '3px' } }, 'EARNED'),
       ),
       h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
-        h('span', { style: { fontSize: '26px', fontWeight: 700, color: '#ffaa00' } }, fmtINR(Math.max(0, TARGET_REV - rev))),
-        h('span', { style: { fontSize: '10px', color: '#444', letterSpacing: '2px' } }, 'TO GO'),
+        h('span', { style: { fontSize: '32px', fontWeight: 700, color: '#ffaa00' } }, fmtINR(Math.max(0, TARGET_REV - rev))),
+        h('span', { style: { fontSize: '12px', color: '#444', letterSpacing: '3px' } }, 'TO GO'),
       ),
     ),
 
     // Quote
-    h('div', { style: { display: 'flex', justifyContent: 'center', marginBottom: '6px' } },
-      h('span', { style: { fontSize: '14px', color: '#333', fontStyle: 'italic' } }, quote),
+    h('div', { style: { display: 'flex', justifyContent: 'center', marginBottom: '8px' } },
+      h('span', { style: { fontSize: '16px', color: '#333', fontStyle: 'italic' } }, quote),
     ),
 
     // Handle
     h('div', { style: { display: 'flex', justifyContent: 'flex-end' } },
-      h('span', { style: { fontSize: '11px', color: '#1a1a1a' } }, '@samarthbuilds'),
+      h('span', { style: { fontSize: '12px', color: '#1a1a1a' } }, '@samarthbuilds'),
     ),
   );
 

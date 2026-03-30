@@ -69,6 +69,11 @@ function App(){
   const wpUrl=`${window.location.origin}/api/wallpaper?width=1170&height=2532`;
   const igUrl=`${window.location.origin}/api/instagram`;
   const[cp,setCp]=useState(false);const[li,setLi]=useState('');const[igDl,setIgDl]=useState(false);
+  const[postLine,setPostLine]=useState('');const[postLearn,setPostLearn]=useState('');const[postNum,setPostNum]=useState('');
+  const[cpX,setCpX]=useState(false);const[cpIG,setCpIG]=useState(false);
+  const dayNum=dS+1;
+  const xPost=`0 > 80L | Day ${dayNum} of ${tD}\n\n${postLine||'[What happened today]'}\n${postLearn||'[What I learned]'}\n${postNum||'[One number that moved]'}\n\nRev: ${fmt(st.rev)}  |  Pipeline: ${fmt(st.pipeline)}  |  Days left: ${dL}\n\n[wallpaper screenshot]`;
+  const igCaption=`0 > 80L | Day ${dayNum} of ${tD}\n\n${postLine||'[What happened today]'}\n${postLearn||'[What I learned]'}\n${postNum||'[One number that moved]'}\n\nRevenue: ${fmt(st.rev)}\nClients: ${st.clients}\nPipeline: ${fmt(st.pipeline)}\nLeads: ${st.leads}\nDays left: ${dL}\n\n#0to80L #BuildingInPublic #Automation #B2BSaaS #AgencyLife #Day${dayNum}`;
   if(ld)return(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{color:'#555'}}>Loading from Airtable...</div></div>);
 
   return(<div style={{maxWidth:520,margin:'0 auto',padding:'1rem',paddingBottom:'4rem'}}>
@@ -197,7 +202,36 @@ function App(){
     </div>
 
     {/* CUSTOM MSG */}
-    <div className="card"><div className="lbl" style={{marginBottom:6}}>Custom Message</div><input className="inp" value={st.msg||''} onChange={e=>upd('msg',e.target.value)} placeholder="Override daily quote"/></div>
+
+    {/* CONTENT GENERATOR */}
+    <div className="card" style={{borderLeft:'3px solid #5BA0D6'}}>
+      <div className="lbl" style={{marginBottom:8}}>Daily Post Generator</div>
+      <div style={{fontSize:'.72rem',color:'#555',marginBottom:10}}>Fill in 3 lines. Captions auto-generate for X and Instagram.</div>
+      <div style={{marginBottom:6}}><div className="lbl">What happened today</div><input className="inp" value={postLine} onChange={e=>setPostLine(e.target.value)} placeholder="Sent 20 cold emails. 3 replies. 1 discovery call booked."/></div>
+      <div style={{marginBottom:6}}><div className="lbl">What you learned</div><input className="inp" value={postLearn} onChange={e=>setPostLearn(e.target.value)} placeholder="Subject lines with numbers get 2x open rates."/></div>
+      <div style={{marginBottom:12}}><div className="lbl">One number that moved</div><input className="inp" value={postNum} onChange={e=>setPostNum(e.target.value)} placeholder="Pipeline went from 0 to 2.5L."/></div>
+
+      <div style={{marginBottom:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+          <div className="lbl" style={{marginBottom:0}}>X / Twitter</div>
+          <button onClick={()=>{navigator.clipboard.writeText(xPost);setCpX(true);setTimeout(()=>setCpX(false),2e3)}}
+            style={{background:cpX?'#00ff88':'#1a1a1a',color:cpX?'#000':'#5BA0D6',border:'none',borderRadius:4,padding:'4px 10px',fontSize:'.65rem',fontWeight:600,cursor:'pointer'}}>{cpX?'\u2713 COPIED':'COPY'}</button>
+        </div>
+        <div style={{background:'#000',border:'1px solid #1a1a1a',borderRadius:6,padding:10,fontSize:'.72rem',color:'#888',fontFamily:'JetBrains Mono,monospace',whiteSpace:'pre-wrap',lineHeight:1.5,maxHeight:180,overflow:'auto'}}>{xPost}</div>
+      </div>
+
+      <div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+          <div className="lbl" style={{marginBottom:0}}>Instagram Caption</div>
+          <button onClick={()=>{navigator.clipboard.writeText(igCaption);setCpIG(true);setTimeout(()=>setCpIG(false),2e3)}}
+            style={{background:cpIG?'#00ff88':'#1a1a1a',color:cpIG?'#000':'#c084fc',border:'none',borderRadius:4,padding:'4px 10px',fontSize:'.65rem',fontWeight:600,cursor:'pointer'}}>{cpIG?'\u2713 COPIED':'COPY'}</button>
+        </div>
+        <div style={{background:'#000',border:'1px solid #1a1a1a',borderRadius:6,padding:10,fontSize:'.72rem',color:'#888',fontFamily:'JetBrains Mono,monospace',whiteSpace:'pre-wrap',lineHeight:1.5,maxHeight:220,overflow:'auto'}}>{igCaption}</div>
+      </div>
+    </div>
+
+    {/* CUSTOM WALLPAPER MSG */}
+    <div className="card"><div className="lbl" style={{marginBottom:6}}>Custom Wallpaper Quote</div><input className="inp" value={st.msg||''} onChange={e=>upd('msg',e.target.value)} placeholder="Override daily motivational quote"/></div>
 
     {/* OUTREACH REF */}
     <div className="card"><div className="lbl" style={{marginBottom:8}}>Outreach Ref</div><div style={{fontSize:'.78rem',color:'#888',lineHeight:1.6}}><span style={{color:'#00ff88'}}>India</span> Email+LI | <span style={{color:'#ffaa00'}}>Gulf</span> LI first | <span style={{color:'#5BA0D6'}}>ANZ</span> Email+LI+Loom</div><div style={{fontSize:'.72rem',color:'#333',marginTop:6}}>Audit 75K-$3K | Retainer 2-3.5L | Project 5-12L</div></div>

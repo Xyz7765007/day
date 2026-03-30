@@ -67,8 +67,8 @@ function App(){
 
   const now=new Date(),dS=Math.max(0,Math.floor((now-S_DATE)/864e5)),dL=Math.max(0,Math.floor((T_DATE-now)/864e5)),tD=Math.floor((T_DATE-S_DATE)/864e5),pT=Math.round(dS/tD*100),pR=Math.min(100,Math.round(st.rev/T_REV*100)),ph=getPhase(dS),sc=getSched(now.getDay()),wk=Math.floor(dS/7)+1,mT=Math.round((T_REV-st.rev)/Math.max(1,Math.ceil(dL/30)));
   const wpUrl=`${window.location.origin}/api/wallpaper?width=1170&height=2532`;
-  const[cp,setCp]=useState(false);const[li,setLi]=useState('');
-
+  const igUrl=`${window.location.origin}/api/instagram`;
+  const[cp,setCp]=useState(false);const[li,setLi]=useState('');const[igDl,setIgDl]=useState(false);
   if(ld)return(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{color:'#555'}}>Loading from Airtable...</div></div>);
 
   return(<div style={{maxWidth:520,margin:'0 auto',padding:'1rem',paddingBottom:'4rem'}}>
@@ -177,6 +177,22 @@ function App(){
         1. Get Contents of URL &gt; paste wallpaper URL<br/>
         2. Set Wallpaper &gt; Contents of URL &gt; Lock Screen<br/>
         3. Automations &gt; Every hour &gt; Run shortcut
+      </div>
+    </div>
+
+    {/* INSTAGRAM 1:1 */}
+    <div className="card" style={{borderLeft:'3px solid #c084fc'}}>
+      <div className="lbl" style={{marginBottom:6}}>Instagram Post (1080x1080)</div>
+      <div style={{fontSize:'.72rem',color:'#555',marginBottom:8}}>SAVE your data first, then download the 1:1 image for Instagram / X.</div>
+      <div style={{display:'flex',gap:6}}>
+        <a href={igUrl} target="_blank" rel="noopener noreferrer"
+          style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'10px 0',background:'#c084fc',color:'#000',borderRadius:5,textDecoration:'none',fontWeight:700,fontSize:'.8rem',letterSpacing:'.05em'}}>
+          DOWNLOAD 1:1 IMAGE
+        </a>
+        <a href={igUrl} target="_blank" rel="noopener noreferrer"
+          style={{flex:'0 0 auto',display:'flex',alignItems:'center',justifyContent:'center',padding:'10px 14px',background:'#0a0a0a',color:'#555',border:'1px solid #1a1a1a',borderRadius:5,textDecoration:'none',fontWeight:600,fontSize:'.75rem'}}>
+          PREVIEW
+        </a>
       </div>
     </div>
 
